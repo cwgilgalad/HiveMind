@@ -68,5 +68,11 @@ Windows 11, Git, the .NET 10 SDK, and Visual Studio with the WinUI application d
 
 ## License
 
-Not yet chosen; see the open questions in the design spec. Until a license is added, all rights
-are reserved.
+Apache License 2.0; see [LICENSE](LICENSE). Knowledge packs will be licensed separately under
+CC BY 4.0.
+
+## Code signing
+
+Release binaries will be signed through SignPath Foundation's free program for open-source
+projects. Signed releases will carry this line: *Free code signing provided by SignPath.io,
+certificate by SignPath Foundation.* No binaries are published yet.

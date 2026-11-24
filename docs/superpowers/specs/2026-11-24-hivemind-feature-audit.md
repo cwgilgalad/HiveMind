@@ -386,4 +386,4 @@ a deliberate exclusion with a replacement (X-01 to X-10).
 - WinUI 3 Registry Editor sample: <https://www.windowslatest.com/2026/11/08/microsoft-built-a-native-winui-registry-editor-that-makes-windows-11s-regedit-look-like-windows-95-and-i-tried-it/> · <https://windowsreport.com/?p=1515114>
 - Offline Registry Library: <https://learn.microsoft.com/windows/win32/devnotes/offline-registry-library-portal>
 - `RegLoadAppKey`: <https://learn.microsoft.com/windows/win32/api/winreg/nf-winreg-regloadappkeyw>
-- Artifact Signing: <https://azure.microsoft.com/pricing/details/artifact-signing/> · <https://learn.microsoft.com/windows/apps/package-and-deploy/code-signing-options>
+- SignPath Foundation (open-source code signing): <https://signpath.org/> · <https://signpath.org/terms> · <https://about.signpath.io/product/open-source>
