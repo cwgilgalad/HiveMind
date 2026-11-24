@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft for owner review. See [Open questions](#13-open-questions-for-the-owner). |
+| **Status** | Ready for owner approval. Open questions answered on 2026-11-24; see [Owner decisions](#13-owner-decisions). |
 | **Date** | 2026-11-24 |
 | **Owner** | cwgilgalad |
 | **Companion** | [Competitive feature audit](2026-11-24-hivemind-feature-audit.md): every audited tool's features, mapped to the IDs used below |
@@ -144,8 +144,9 @@ Same process model, with a WPF UI layer.
     the MIT-licensed WPF UI library.
   - It looks *almost* native.
   - No NativeAOT.
-- **Switch to B if** the GUI must run on Server 2016, or if WinUI gaps cost more than one phase of
-  effort. View models stay UI-agnostic, so switching replaces views only.
+- **Switch to B only if** WinUI gaps cost more than one phase of effort. The owner confirmed on
+  2026-11-24 that the GUI doesn't need to run on Server 2016. View models stay UI-agnostic, so
+  switching replaces views only.
 
 ### C. Rejected
 
@@ -440,9 +441,11 @@ hm.exe (CLI) and the HiveMind PowerShell module (Phase 2) - same Core; see eleva
   - The broker learns the interactive user's identity from the client's session, using
     `ProcessIdToSessionId` and the WTS APIs, and compares it with what the UI declares.
   - It never opens or impersonates the client's token.
-  - It verifies the client process image path and Authenticode publisher
+  - It verifies the client's Authenticode signature, that the client's hash is in the signed
+    release catalog, and that the client runs from the broker's own installation folder
     (`GetNamedPipeClientProcessId`, `QueryFullProcessImageName` with query-limited access, and
-    `WinVerifyTrust`).
+    `WinVerifyTrust`). The catalog check is needed because the SignPath Foundation certificate is
+    shared by many projects (§8.3).
 - **Over-the-shoulder elevation** (a different admin account approves UAC): "HKCU" operations in the
   broker target `HKEY_USERS\<interactive user SID>`, so changes land in the signed-in user's hive,
   not the admin's.
@@ -853,6 +856,9 @@ stays revertible.
   - An `AssemblyLoadContext` isn't a security boundary, and plugins run with the user's rights. So
     by default only signed plugins from trusted publishers load. Users can trust a publisher, and
     enterprises can lock this down.
+  - A certificate shared by many projects, such as SignPath Foundation's, doesn't identify a
+    publisher. Plugins signed with one are trusted by plugin identity and hash, never by
+    certificate alone.
 - **Dogfooding:** first-party features are built on the same interfaces.
 
 ### 7.13 Technology stack (licenses re-verified by the Phase 0 license gate)
@@ -867,10 +873,10 @@ stays revertible.
 | Interop | Microsoft.Windows.CsWin32, plus our own declarations | MIT |
 | Storage | Microsoft.Data.Sqlite / SQLitePCLRaw (+ SQLCipher Community Edition if chosen) | MIT / Apache-2.0 (/ BSD-3) |
 | YAML | YamlDotNet | MIT |
-| ETW | Microsoft.Diagnostics.Tracing.TraceEvent | MIT |
+| ETW | Microsoft.Diagnostics.Tracing.TraceEvent (keep its bundled native helper DLLs out of releases unless SignPath confirms they're acceptable) | MIT |
 | Remoting | Microsoft.PowerShell.SDK | MIT |
 | Forensic parsing (Phase 5) | Eric Zimmerman's `Registry` library | to verify (believed MIT) |
-| Offline hive creation (optional) | `offreg.dll` (Microsoft redistributable) | Microsoft redistribution terms (verify) |
+| Offline hive creation (optional) | `offreg.dll`, used only if it's already on the machine. It's never shipped, because SignPath's program forbids proprietary components. | Microsoft (not redistributed) |
 | Tests | xUnit or MSTest, FlaUI, SharpFuzz, BenchmarkDotNet | Apache-2.0 / MIT |
 | SBOM | CycloneDX for .NET | Apache-2.0 |
 | Installers | MSIX tooling; MSI via WiX (check its current maintenance-fee terms if commercial) or an alternative | various |
@@ -887,7 +893,7 @@ stays revertible.
 
 | Threat | Mitigation |
 |---|---|
-| Malware drives the elevated broker | The broker starts only through UAC. The pipe DACL admits only the interactive user's SID. The peer's image path and Authenticode publisher are pinned. The command schema is fixed, and every command is journaled. |
+| Malware drives the elevated broker | The broker starts only through UAC. The pipe DACL admits only the interactive user's SID. The peer's signature, its hash in the signed release catalog, and its installation folder are checked. The command schema is fixed, and every command is journaled. |
 | Malicious `.reg`, changeset, pack or link | Always previewed and staged, never auto-applied. `hivemind://` links only navigate. Packs can't run code. Signature badges throughout. |
 | DLL planting or search-order hijacking | `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32)` at startup. App-local DLLs are signed and verified. Per-machine installs go under Program Files. |
 | Plugin abuse | Signed-publisher policy, never loaded in the broker, capability manifest |
@@ -934,25 +940,43 @@ with Defender for Endpoint where available. Any detection blocks the release unt
 
 ### 8.3 Signing and supply chain
 
-- **Code-signing options** (the choice is Open question 3). SmartScreen reputation builds over time
-  with any of them.
-  - **Azure Artifact Signing** (formerly Trusted Signing): the Basic plan is about $9.99 per month.
-    Individual developers currently need to be in the US or Canada.
-  - **An OV certificate:** roughly $150–300 per year.
-  - **SignPath Foundation:** free for qualifying open-source projects.
+- **Code signing: SignPath Foundation's free program for open-source projects** (owner decision,
+  2026-11-24). Its terms shape the project:
+  - **Publisher:** the certificate is issued to SignPath Foundation, so binaries show *SignPath
+    Foundation* as the publisher. Every project in the program shares that certificate.
+  - **Eligibility:** an OSI-approved license (Apache-2.0), a public repository, and no proprietary
+    components in what's signed.
+  - **Builds:** fully automated from checked-in source, through SignPath's GitHub Actions
+    integration.
+  - **Accounts:** multi-factor authentication for every team member, on SignPath and on GitHub.
+  - **Policy page:** a code signing policy listing team roles (committers and reviewers, approvers)
+    and a privacy statement. HiveMind's statement: it doesn't transfer information to other
+    networked systems unless the user asks it to (remote connections, opt-in update checks, opt-in
+    AI).
+  - **Attribution:** releases carry the line "Free code signing provided by SignPath.io,
+    certificate by SignPath Foundation."
+  - **Before applying:** ask SignPath to confirm that bundling the Windows App SDK runtime and .NET
+    counts as upstream libraries. Both are built from open-source code and signed by Microsoft. Keep
+    every other proprietary binary out of releases.
+  - **Until approval:** no binary releases. CI builds stay internal, and developers use a local test
+    certificate.
+  - **SmartScreen:** reputation builds over time, as with any certificate.
 - **What gets signed:**
   - every PE file HiveMind produces, plus the MSI and MSIX packages
   - PowerShell modules and scripts, including the JEA package
-  - official knowledge packs (detached signatures)
-  - release checksums
+  - the release catalog, which covers official knowledge packs and checksums
 - **Runtime verification:**
-  - the UI verifies the broker before launching it, and the broker verifies the UI
-  - plugin and pack loaders verify signatures
-  - Debug builds trust a local test certificate; Release builds pin the production publisher
+  - Each release ships a signed catalog (`.cat`) listing the SHA-256 hash of every file in it.
+  - The UI verifies the broker before launching it, and the broker verifies the UI. Each one checks
+    the other's Authenticode signature, that its hash is in the release catalog, and that both run
+    from the same installation folder. Publisher checks alone aren't enough, because the SignPath
+    Foundation certificate is shared.
+  - Plugin and pack loaders verify signatures (§7.12 covers shared certificates).
+  - Debug builds trust a local test certificate.
 - **Supply chain:**
   - locked package versions (`packages.lock.json`) and Dependabot
   - the license gate and an SBOM for every release
-  - GitHub artifact attestations where the plan and repo visibility allow
+  - GitHub artifact attestations, which are free for public repositories
   - deterministic builds and SourceLink
 
 ### 8.4 Sensitive data
@@ -973,8 +997,11 @@ with Defender for Endpoint where available. Any detection blocks the release unt
 
 ## 9. Licensing guardrails
 
-- **Project license:** the owner decides (Open question 1). Until then, the repo is private with no
-  license, which means all rights reserved.
+- **Project license:** Apache-2.0 (owner decision on 2026-11-24 to open-source the project). The
+  repo goes public before the SignPath application, because the program requires a public
+  repository.
+- **No proprietary binaries in releases,** as SignPath requires. The license gate checks release
+  artifacts as well as package licenses.
 - **Dependencies:**
   - **Allowed:** MIT, Apache-2.0, BSD-2/3, ISC and Zlib; MS-PL case by case.
   - **Denied:** GPL, AGPL, LGPL, SSPL, BUSL, and non-commercial Creative Commons licenses.
@@ -991,8 +1018,7 @@ with Defender for Endpoint where available. Any detection blocks the release unt
   - No registry tool named "HiveMind" was found as of November 2026, but unrelated software uses
     "Hivemind".
   - Run a trademark search before any commercial release.
-- **Contributions:** if the project is open-sourced, contributors sign off under the Developer
-  Certificate of Origin (DCO).
+- **Contributions:** contributors sign off under the Developer Certificate of Origin (DCO).
 
 ## 10. Roadmap
 
@@ -1011,7 +1037,14 @@ with Defender for Endpoint where available. Any detection blocks the release unt
 - Solution layout and standards: nullable reference types, analyzers, warnings as errors,
   `.editorconfig`.
 - CI on Windows runners: x64 and ARM64 builds, unit and integration tests against app-hive fixtures.
-- Signing pipeline and runtime signature verification, with dev-certificate trust in Debug builds.
+- Signing pipeline: SignPath's GitHub Actions integration, the signed release catalog, and runtime
+  verification, with dev-certificate trust in Debug builds.
+- Open-source setup:
+  - `CONTRIBUTING.md` (DCO sign-off), `CODE_OF_CONDUCT.md`, `SECURITY.md` (GitHub private
+    vulnerability reporting), and `CODE_SIGNING_POLICY.md` (SignPath roles, privacy statement,
+    attribution)
+  - multi-factor authentication on every maintainer account, and branch protection on `main`
+  - make the repo public, then apply to SignPath Foundation
 - License gate, `THIRD-PARTY-NOTICES`, SBOM.
 - Banned-API analyzer (§8.2) and a PR checklist for EDR-sensitive behaviour.
 - Crypto and key-management module and the journal format, with tests.
@@ -1021,8 +1054,9 @@ with Defender for Endpoint where available. Any detection blocks the release unt
 - **UX:** clickable mockups of the main window, search and pending changes, and a usability test
   with 3 to 5 admins.
 
-**Exit:** a signed CI build of an empty shell, the analyzers and gates enforced, a benchmark
-baseline, and the mockups approved.
+**Exit:** a CI build of an empty shell signed with the dev certificate (SignPath signing follows
+approval), the analyzers and gates enforced, a benchmark baseline, the mockups approved, and the
+SignPath application submitted.
 
 ### Phase 1: v0.1 "Find & Understand" (MVP; replaces regedit for daily use)
 
@@ -1280,15 +1314,15 @@ GUIDE-12 rules:
   - Windows 10 22H2 and LTSC 2021
   - Windows Server 2019, 2022 and 2025 (Desktop Experience)
   - Server Core for the CLI and module
-- **ARM64 tests** run on GitHub's Windows ARM64 runners where the plan allows. Otherwise ARM64 is
-  cross-compiled and smoke-tested on an ARM64 device or VM.
+- **ARM64 tests** run on GitHub's Windows ARM64 hosted runners, with an ARM64 device or VM as the
+  fallback.
 
 ### 12.3 CI/CD and release
 
-- **CI:** GitHub Actions with a protected `main`. PR checks cover build, tests, analyzers and the
-  license gate, plus CodeQL where the plan allows. CodeQL is free on public repos and a paid add-on
-  for private ones.
-- **Releases:** SemVer. Signed artifacts, checksums, an SBOM, and attestations where available.
+- **CI:** GitHub Actions with a protected `main`. PR checks cover build, tests, analyzers, the
+  license gate and CodeQL, which is free for public repositories.
+- **Releases:** SemVer. Signed artifacts and release catalog, checksums, an SBOM, and attestations.
+  No binary release ships unsigned.
 - **Distribution channels:** portable ZIP (Phase 1), MSIX (Phase 2), and MSI and winget (Phase 5).
   There's no silent self-update.
 
@@ -1298,24 +1332,19 @@ GUIDE-12 rules:
 - Crash dumps are opt-in, for the user to attach to an issue.
 - No telemetry.
 
-## 13. Open questions for the owner
+## 13. Owner decisions
 
-1. **Open source or commercial?** The answer decides:
-   - the license
-   - when the repo can go public
-   - the signing route (SignPath Foundation is free for qualifying open-source projects)
-   - free CodeQL and attestations, which need a public repo
-   - how contributions work
+Answered on 2026-11-24.
 
-   Recommendation: Apache-2.0 if open source, because it includes a patent grant. If you want a
-   paid Pro edition later, open core works with either choice.
-2. **Must the GUI run directly on Windows Server 2016?** If yes, switch to Approach B (WPF).
-   Otherwise, WinUI 3 stays and Server 2016 gets the CLI and module, plus remote management from a
-   newer machine.
-3. **Code-signing route:** Azure Artifact Signing (individuals currently in the US or Canada, or an
-   organization), an OV certificate, or SignPath (open source only)?
+1. **Open source.** The license is Apache-2.0, which Claude recommended for its patent grant. The
+   owner can still switch to MIT before outside contributions arrive. The repo goes public before
+   the SignPath application.
+2. **The GUI doesn't need to run on Windows Server 2016.** Approach A (WinUI 3) is confirmed.
+   Server 2016 is covered by the CLI and module, and by remote management from a newer machine.
+3. **Code signing uses SignPath Foundation's open-source program.** §8.3 covers its requirements
+   and the design changes they cause.
 
-## 14. Calls made by Claude (please check)
+## 14. Calls made by Claude (approved by the owner for now, 2026-11-24)
 
 1. **WinUI 3 over WPF**, for the native, sleek look. WPF stays the documented fallback.
 2. **Multi-process design:** an unelevated UI, an on-demand elevated broker, and an unelevated
@@ -1332,7 +1361,8 @@ GUIDE-12 rules:
 8. **No telemetry.** Update checks are opt-in, and there's no silent self-update.
 9. **Knowledge packs are licensed CC BY 4.0**, separately from the code license.
 10. **No IFEO-based "replace regedit"** option.
-11. **The repo stays private, with no license, until Open question 1 is answered.**
+11. **The repo stays private until the owner makes it public.** It needs to be public before the
+    SignPath application.
 12. **AI explanations are a Phase 5 opt-in.** The provider is pluggable, and suggestions can only be
     staged.
 13. **Compact density is the default.**
