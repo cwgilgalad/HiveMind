@@ -1,0 +1,35 @@
+# Normalize text files; Windows-specific files keep CRLF in the working tree
+* text=auto
+
+*.cs      text diff=csharp
+*.xaml    text
+*.md      text
+*.yml     text
+*.yaml    text
+*.json    text
+
+*.sln     text eol=crlf
+*.slnx    text eol=crlf
+*.csproj  text eol=crlf
+*.props   text eol=crlf
+*.targets text eol=crlf
+*.ps1     text eol=crlf
+*.psm1    text eol=crlf
+*.psd1    text eol=crlf
+*.cmd     text eol=crlf
+*.bat     text eol=crlf
+
+# Registry artifacts stay byte-exact (.reg is usually UTF-16 LE with a BOM; hives and .pol are binary)
+*.reg     binary
+*.pol     binary
+*.hve     binary
+*.dat     binary
+*.LOG1    binary
+*.LOG2    binary
+
+# Images and fonts
+*.png     binary
+*.ico     binary
+*.jpg     binary
+*.gif     binary
+*.ttf     binary

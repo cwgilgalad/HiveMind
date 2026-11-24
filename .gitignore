@@ -1,0 +1,58 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/
+publish/
+*.binlog
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Test results, coverage, benchmarks
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+coverage*.json
+coverage*.xml
+BenchmarkDotNet.Artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Packaging (MSIX/AppX/MSI)
+AppPackages/
+BundleArtifacts/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.msi
+
+# Secrets and signing material: never commit these
+*.pfx
+*.p12
+*.pvk
+*.snk
+secrets.json
+.env
+*.local.json
+
+# HiveMind data when a developer runs portable mode from the repo
+.hivemind/
+
+# OS clutter
+Thumbs.db
+Desktop.ini
+.DS_Store
