@@ -102,6 +102,9 @@ constraints come from §4, §7.9, §7.10, §8, §9 and §12.
 
 ## Working environment
 
+- **Windows dev box:** follow `docs/superpowers/handoffs/2026-11-24-phase-0-laptop-handoff.md`.
+  Everything below runs locally there; CI is the second check, and the only place the Linux job,
+  ARM64 tests on x64 machines and the release dry run run.
 - **Where things build:**
   - Platform-neutral projects (Core, Analyzers, LicenseGate, Testing, Policy tests) build and test
     on Linux and on Windows.
