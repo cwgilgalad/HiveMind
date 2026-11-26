@@ -141,13 +141,13 @@ constraints come from §4, §7.9, §7.10, §8, §9 and §12.
     to the folder containing `HiveMind.slnx`), `static string Path(string relative)`,
     `static string[] ReadLines(string relative)`
 
-- [ ] **Step 1: Create branch**
+- [x] **Step 1: Create branch**
 
 ```bash
 git switch docs/owner-decisions && git switch -c phase-0/foundations
 ```
 
-- [ ] **Step 2: Write the failing test** in `tests/HiveMind.Core.Tests/BuildInfoTests.cs`
+- [x] **Step 2: Write the failing test** in `tests/HiveMind.Core.Tests/BuildInfoTests.cs`
 
 ```csharp
 public sealed class BuildInfoTests
@@ -161,7 +161,7 @@ public sealed class BuildInfoTests
 }
 ```
 
-- [ ] **Step 3: Create the build infrastructure with these exact values**
+- [x] **Step 3: Create the build infrastructure with these exact values**
 
 `global.json`: `{"sdk":{"version":"10.0.100","rollForward":"latestFeature"}}`.
 
@@ -197,19 +197,19 @@ Then:
   `dotnet sln HiveMind.slnx add`.
 - Create `.config/dotnet-tools.json` with `dotnet new tool-manifest`.
 
-- [ ] **Step 4: Run the test to verify it fails**
+- [x] **Step 4: Run the test to verify it fails**
 
 Run: `dotnet test tests/HiveMind.Core.Tests`
 Expected: build error `CS0103: The name 'BuildInfo' does not exist`.
 
-- [ ] **Step 5: Implement `BuildInfo` in `src/HiveMind.Core/BuildInfo.cs`**
+- [x] **Step 5: Implement `BuildInfo` in `src/HiveMind.Core/BuildInfo.cs`**
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `dotnet test tests/HiveMind.Core.Tests`
 Expected: 2 passed.
 
-- [ ] **Step 7: Write `eng/Setup-DevMachine.ps1` and `docs/development.md`**
+- [x] **Step 7: Write `eng/Setup-DevMachine.ps1` and `docs/development.md`**
 
 `Setup-DevMachine.ps1` takes `[-CheckOnly] [-InstallDevCertificate]` and runs on Windows
 PowerShell 5.1 and PowerShell 7.
@@ -237,7 +237,7 @@ PowerShell 5.1 and PowerShell 7.
 - dev signing (Task 10)
 - which projects build on Linux
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add global.json NuGet.config Directory.Build.props Directory.Packages.props .editorconfig HiveMind.slnx .config src tests eng docs/development.md

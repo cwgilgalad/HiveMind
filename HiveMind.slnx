@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HiveMind.Core/HiveMind.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HiveMind.Core.Tests/HiveMind.Core.Tests.csproj" />
+    <Project Path="tests/HiveMind.Testing/HiveMind.Testing.csproj" />
+  </Folder>
+</Solution>
