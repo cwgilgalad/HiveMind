@@ -721,7 +721,7 @@ public static class StreamCipher { public const int DefaultChunkSize = 65_536; p
 - **`Decrypt`** treats the chunk followed by end-of-stream as the final chunk. Truncation,
   reordering, trailing bytes, header tampering and a wrong key all throw `CryptographicException`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```csharp
 public sealed class StreamCipherTests
@@ -775,19 +775,19 @@ Also write these tests:
 - `Open_ShorterThanOverhead_Throws`
 - `SealedLength_IsPlaintextPlus28`
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test tests/HiveMind.Core.Tests --filter "FullyQualifiedName~Cipher"`
 Expected: compile errors.
 
-- [ ] **Step 3: Implement `RecordCipher` and `StreamCipher`** per the format above
+- [x] **Step 3: Implement `RecordCipher` and `StreamCipher`** per the format above
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test tests/HiveMind.Core.Tests --filter "FullyQualifiedName~Cipher"`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HiveMind.Core/Crypto tests/HiveMind.Core.Tests/Crypto
