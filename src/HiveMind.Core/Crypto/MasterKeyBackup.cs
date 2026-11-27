@@ -11,6 +11,8 @@ public static class MasterKeyBackup
 {
     /// <summary>Encrypts <paramref name="masterKey"/> under <paramref name="recoveryPassphrase"/>.</summary>
     /// <exception cref="ObjectDisposedException"><paramref name="masterKey"/> has been disposed.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="recoveryPassphrase"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="recoveryPassphrase"/> is empty.</exception>
     public static byte[] Export(MasterKey masterKey, string recoveryPassphrase)
     {
         ArgumentNullException.ThrowIfNull(masterKey);

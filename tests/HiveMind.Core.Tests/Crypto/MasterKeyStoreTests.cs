@@ -81,4 +81,47 @@ public sealed class MasterKeyStoreTests
         using var key = MasterKeyStore.LoadOrCreate(Path.Combine(folder, "masterkey.bin"), new FakeKeyProtector());
         Assert.True(File.Exists(Path.Combine(folder, "masterkey.bin")));
     }
+
+    [Fact]
+    public void LoadOrCreate_KeyFileCreatedWhileSaving_LoadsTheOtherKey()
+    {
+        using var dir = new TempDirectory();
+        var folder = Path.Combine(dir.Path, "keys");
+        var path = Path.Combine(folder, "masterkey.bin");
+        var racer = new RacingKeyProtector(path);
+
+        using var loaded = MasterKeyStore.LoadOrCreate(path, racer);
+        using var reloaded = MasterKeyStore.LoadOrCreate(path, new FakeKeyProtector());
+
+        Assert.NotNull(racer.OtherFingerprint);
+        Assert.Equal(racer.OtherFingerprint, Fingerprint(loaded));
+        Assert.Equal(racer.OtherFingerprint, Fingerprint(reloaded));
+        Assert.Equal(["masterkey.bin"], Directory.GetFiles(folder).Select(Path.GetFileName));
+    }
+
+    // Behaves like FakeKeyProtector, but its first Protect call stands in for another process that
+    // creates the key file at the same path while the outer LoadOrCreate is still saving its own.
+    private sealed class RacingKeyProtector(string path) : IKeyProtector
+    {
+        private readonly FakeKeyProtector _inner = new();
+        private bool _raced;
+
+        public string Id => "fake";
+
+        public byte[]? OtherFingerprint { get; private set; }
+
+        public byte[] Protect(ReadOnlySpan<byte> secret)
+        {
+            if (!_raced)
+            {
+                _raced = true;
+                using var other = MasterKeyStore.LoadOrCreate(path, new FakeKeyProtector());
+                OtherFingerprint = Fingerprint(other);
+            }
+
+            return _inner.Protect(secret);
+        }
+
+        public byte[] Unprotect(ReadOnlySpan<byte> protectedData) => _inner.Unprotect(protectedData);
+    }
 }
