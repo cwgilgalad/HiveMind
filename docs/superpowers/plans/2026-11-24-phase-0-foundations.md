@@ -255,7 +255,7 @@ git commit -m "build: add solution skeleton, standards and dev setup"
 - Produces: CI jobs `linux-tests` and `windows`, which later tasks extend and which branch
   protection will require.
 
-- [ ] **Step 1: Write `.github/workflows/ci.yml`**
+- [x] **Step 1: Write `.github/workflows/ci.yml`**
 
 **Workflow settings:**
 - Triggers: `push` to `main` and `phase-*/**`, and `pull_request`.
@@ -278,13 +278,13 @@ git commit -m "build: add solution skeleton, standards and dev setup"
   `windows`, run only when `${{ !github.event.repository.private }}`. ARM64 tests (spec §12.2)
   start once the repo is public; until then ARM64 is build-only.
 
-- [ ] **Step 2: Write `.github/dependabot.yml`**
+- [x] **Step 2: Write `.github/dependabot.yml`**
 
 Two ecosystems, both checked weekly:
 - `nuget` at `/`, with minor and patch updates grouped
 - `github-actions` at `/`
 
-- [ ] **Step 3: Push and verify**
+- [x] **Step 3: Push and verify**
 
 Run: `git add .github && git commit -m "ci: build and test on Windows and Linux" && git push -u origin phase-0/foundations && gh run watch --repo cwgilgalad/hivemind`
 Expected: `linux-tests` and `windows` both succeed.
