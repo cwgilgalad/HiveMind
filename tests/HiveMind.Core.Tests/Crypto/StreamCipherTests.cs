@@ -103,6 +103,18 @@ public sealed class StreamCipherTests
     }
 
     [Theory]
+    [InlineData(16)]
+    [InlineData(31)]
+    [InlineData(33)]
+    public void StoreKeyNot32Bytes_Throws(int length)
+    {
+        var key = new byte[length];
+        Assert.Throws<ArgumentException>(() => Enc([1, 2, 3], key));
+        // Decrypt checks the key before it reads the header, so the input doesn't matter.
+        Assert.Throws<ArgumentException>(() => Dec([1, 2, 3], key));
+    }
+
+    [Theory]
     [InlineData(1023)]
     [InlineData(16_777_217)]
     public void Encrypt_ChunkSizeOutOfRange_Throws(int chunkSize)

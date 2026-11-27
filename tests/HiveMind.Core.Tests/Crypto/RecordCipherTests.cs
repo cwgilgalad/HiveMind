@@ -57,6 +57,16 @@ public sealed class RecordCipherTests
         Assert.ThrowsAny<CryptographicException>(() => cipher.Open(new byte[RecordCipher.Overhead - 1], AssociatedData));
     }
 
+    [Fact]
+    public void UseAfterDispose_Throws()
+    {
+        var cipher = new RecordCipher(RandomNumberGenerator.GetBytes(32));
+        var sealedRecord = cipher.Seal(RandomNumberGenerator.GetBytes(100), AssociatedData);
+        cipher.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => cipher.Seal(RandomNumberGenerator.GetBytes(100), AssociatedData));
+        Assert.Throws<ObjectDisposedException>(() => cipher.Open(sealedRecord, AssociatedData));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
