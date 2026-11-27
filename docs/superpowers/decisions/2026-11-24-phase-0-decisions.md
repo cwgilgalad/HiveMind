@@ -327,6 +327,37 @@ The file is updated and committed at every task boundary.
   error.
 - **Cost if wrong:** a stray file sits in the key folder until someone deletes it.
 
+### R30: Stream decryption may allocate up to 32 MiB before the first chunk authenticates
+
+- **Decision:** `StreamCipher.Decrypt` sizes its two buffers from the header's chunk size before any
+  chunk is checked. Phase 0 adds no extra guard.
+- **Why:**
+  - The format already caps the chunk size at 16 MiB, and the header check rejects anything larger
+    before allocating. So the worst case is two buffers of about 16 MiB each.
+  - A crafted file can make HiveMind allocate that much once, then fail on the first tag. That is
+    a brief memory spike, not a stall or a crash.
+  - Streams HiveMind writes itself use 64 KiB chunks.
+- **Cost if wrong:** if this ever matters, a later format version lowers the cap, or `Decrypt` grows
+  its buffer as data arrives.
+
+### R31: A `RecordCipher` instance is used by one thread at a time
+
+- **Decision:** `RecordCipher` stays unsynchronised, and its XML doc says so. Task 6's journal, and
+  every later store, either serialises access to one instance or gives each thread its own.
+- **Why:** `AesGcm` keeps per-instance state on some platforms, so sharing an instance without a
+  lock is unsafe. Each store already serialises its writes, so a lock inside the cipher would only
+  add cost.
+- **Cost if wrong:** a store that shares an instance across threads without a lock could produce
+  failed decryptions or corrupt records. Task 6's dispatch states this rule, and its review checks it.
+
+### R32: Two cipher guards get their tests in Task 6's run
+
+- **Decision:** Task 6's run adds `StreamCipher_StoreKeyNot32Bytes_Throws` (both methods) and
+  `RecordCipher_UseAfterDispose_Throws` as a small first commit. This follows the R28 pattern.
+- **Why:** both guards are implemented but untested, because the controller told Task 5 to keep to
+  the plan's test list. Task 6 works in the same area and consumes both types.
+- **Cost if wrong:** Task 6's run has one extra small commit.
+
 ## Task log
 
 ### Task 1: Solution skeleton, standards and dev setup (done)
@@ -466,3 +497,50 @@ The file is updated and committed at every task boundary.
 - **Checked inline:** `File.Exists` appears once, after a failed move. It decides only whether to
   load a key that another process has just created. If it wrongly returns false, the error
   propagates; no new key is written.
+
+### Task 5: Record and stream encryption (done)
+
+- **Commits:**
+  - `f592bcc` "fix(crypto): cap PBKDF2 iterations, refuse empty passphrases, test error paths",
+    which applies R26–R28
+  - `13de484` "feat(crypto): AES-GCM record and chunked stream encryption"
+- **Plan:** Task 5 Steps 1–5 ticked. The follow-up commit ticks nothing, as intended.
+- **CI:** [run 46059147488](https://github.com/cwgilgalad/HiveMind/actions/runs/46059147488).
+  All three jobs were green, with 81 tests each: 63 Core, 10 analyzer and 8 policy.
+- **Packages:** none were added. Everything used is in `System.Security.Cryptography`.
+- **Test-first evidence:**
+  - Follow-up commit: with only the source changes stashed, three tests failed (the iteration cap
+    and both empty-passphrase checks). The above-maximum `Unwrap` test passed on the old code, but
+    only after running PBKDF2 at 10 million iterations, which is the stall R26 removes. A crafted
+    backup now fails in about a millisecond.
+  - Task 5: the cipher tests first failed to compile because the types didn't exist yet, as the
+    plan expects.
+- **Format choices the plan left open, as the controller ruled them in the dispatch:**
+  - `Encrypt` marks a chunk final when a read returns fewer than chunk-size bytes, including zero.
+  - `Decrypt` treats a full stored chunk as never final. A read shorter than one tag throws, so a
+    stream cut at a chunk boundary is rejected.
+  - Header problems throw `CryptographicException`: too short, wrong magic, unknown version, or a
+    chunk size out of range. A chunk size that is still in range but was tampered with fails
+    authentication, because every chunk's associated data includes the header.
+  - Neither method closes, disposes or seeks the caller's streams.
+  - `Decrypt` documents that any plaintext written before it throws is unauthenticated. Callers
+    decrypt to a temporary destination, and Task 6 relies on this.
+  - The stream key lives on the stack and is zeroed. Plaintext chunk buffers are zeroed.
+- **Deviations from the plan, accepted at inspection:**
+  - The agent added `Decrypt_MalformedHeader_Throws`, with five cases (cut short, wrong magic,
+    version 2, chunk size 1,023, chunk size 16,777,217). The dispatch allowed extra tests for header
+    checks that would otherwise go untested.
+  - `Decrypt_TamperedHeaderChunkSize_Throws` changes the chunk size to 2,048, which is still in
+    range, so it proves the header is authenticated rather than just range-checked.
+  - Two of the plan's facts became theories under the plan's names: key lengths 16, 31 and 33, and
+    sealed lengths for 0, 1 and 1,000 bytes. Key length 16 is included because `AesGcm` itself
+    would accept a 16-byte key.
+  - The race test's protector creates the other key from inside its first `Protect` call. The test
+    checks that the outer call returns that key, a fresh load returns it too, and only
+    `masterkey.bin` remains. It passes on Linux as well.
+- **Concerns raised by the agent, ruled on:** R30 (allocation before authentication), R31 (one
+  thread per `RecordCipher`) and R32 (two guards still untested).
+- **Checked inline:**
+  - Commit 1 makes no change to `MasterKeyStore.cs`, so no `File.Exists` was added to the load path.
+  - Both commits use the repo's noreply identity.
+  - The privacy grep is clean.
