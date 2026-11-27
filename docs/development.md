@@ -50,10 +50,10 @@ dotnet test HiveMind.slnx
 ```
 
 To test one project, name it instead: `dotnet test tests/HiveMind.Core.Tests`. The tests use xUnit v3
-on Microsoft.Testing.Platform, and `global.json` turns on that runner for `dotnet test`.
+through the VSTest runner (`xunit.runner.visualstudio`).
 
-The test platform includes Microsoft's telemetry extension. To turn it off, set the environment
-variable `TESTINGPLATFORM_TELEMETRY_OPTOUT` (or `DOTNET_CLI_TELEMETRY_OPTOUT`) to `1`.
+The .NET CLI sends usage data to Microsoft unless `DOTNET_CLI_TELEMETRY_OPTOUT` is set to `1`, and CI
+sets it.
 
 ## Publish
 
