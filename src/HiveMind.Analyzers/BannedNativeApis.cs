@@ -62,7 +62,7 @@ public static class BannedNativeApis
             "DuplicateToken", "DuplicateTokenEx", "ImpersonateLoggedOnUser", "ImpersonateNamedPipeClient",
             "ImpersonateAnonymousToken", "ImpersonateDdeClientWindow", "SetThreadToken",
             "CreateProcessWithTokenW", "CreateProcessAsUser", "CreateProcessWithLogonW", "LogonUser",
-            "LogonUserEx", "NtDuplicateToken", "NtImpersonateThread", "NtSetInformationThread",
+            "LogonUserEx", "LogonUserExEx", "NtDuplicateToken", "NtImpersonateThread", "NtSetInformationThread",
             "NtCreateToken", "NtCreateTokenEx", "NtOpenProcessToken", "CoImpersonateClient",
             "RpcImpersonateClient");
         Add(Injection,

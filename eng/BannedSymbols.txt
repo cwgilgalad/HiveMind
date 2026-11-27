@@ -16,3 +16,8 @@ M:System.Runtime.InteropServices.NativeLibrary.GetExport(System.IntPtr,System.St
 M:System.Runtime.InteropServices.NativeLibrary.TryGetExport(System.IntPtr,System.String,System.IntPtr@);Dynamic export lookup hides imports (spec 8.2)
 M:System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer(System.IntPtr,System.Type);Dynamic export lookup hides imports (spec 8.2)
 M:System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer``1(System.IntPtr);Dynamic export lookup hides imports (spec 8.2)
+M:System.Runtime.InteropServices.NativeLibrary.Load(System.String);Dynamic library loading bypasses the reviewed import list (spec 8.2)
+M:System.Runtime.InteropServices.NativeLibrary.Load(System.String,System.Reflection.Assembly,System.Nullable{System.Runtime.InteropServices.DllImportSearchPath});Dynamic library loading bypasses the reviewed import list (spec 8.2)
+M:System.Runtime.InteropServices.NativeLibrary.TryLoad(System.String,System.IntPtr@);Dynamic library loading bypasses the reviewed import list (spec 8.2)
+M:System.Runtime.InteropServices.NativeLibrary.TryLoad(System.String,System.Reflection.Assembly,System.Nullable{System.Runtime.InteropServices.DllImportSearchPath},System.IntPtr@);Dynamic library loading bypasses the reviewed import list (spec 8.2)
+M:System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(System.Reflection.Assembly,System.Runtime.InteropServices.DllImportResolver);A custom import resolver bypasses the reviewed import list (spec 8.2)

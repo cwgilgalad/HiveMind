@@ -12,6 +12,11 @@ public sealed class BannedSymbolsPolicyTests
     [InlineData("T:Microsoft.Win32.Registry")]
     [InlineData("T:Microsoft.Win32.RegistryKey")]
     [InlineData("M:System.Runtime.InteropServices.NativeLibrary.GetExport(System.IntPtr,System.String)")]
+    [InlineData("M:System.Runtime.InteropServices.NativeLibrary.Load(System.String)")]
+    [InlineData("M:System.Runtime.InteropServices.NativeLibrary.Load(System.String,System.Reflection.Assembly,System.Nullable{System.Runtime.InteropServices.DllImportSearchPath})")]
+    [InlineData("M:System.Runtime.InteropServices.NativeLibrary.TryLoad(System.String,System.IntPtr@)")]
+    [InlineData("M:System.Runtime.InteropServices.NativeLibrary.TryLoad(System.String,System.Reflection.Assembly,System.Nullable{System.Runtime.InteropServices.DllImportSearchPath},System.IntPtr@)")]
+    [InlineData("M:System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(System.Reflection.Assembly,System.Runtime.InteropServices.DllImportResolver)")]
     public void BannedSymbols_ContainsRequiredEntry(string docId) =>
         Assert.Contains(docId, RepoFiles.ReadLines("eng/BannedSymbols.txt").Select(l => l.Split(';')[0].Trim()));
 

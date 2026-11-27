@@ -50,6 +50,22 @@ public sealed class BannedNativeApiAnalyzerTests
         """);
 
     [Fact]
+    public Task DllImport_LogonUserExExW_ReportsHM0001() => Verify("""
+        using System.Runtime.InteropServices;
+        static class N { [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] static extern bool {|HM0001:LogonUserExExW|}(string user, string domain, string password, int type, int provider, nint groups, out nint token, out nint sid, out nint profile, out uint length, out nint limits); }
+        """);
+
+    [Fact]
+    public Task LibraryImport_LogonUserExExW_ReportsHM0001() => Verify("""
+        using System.Runtime.InteropServices;
+        static partial class N
+        {
+            [LibraryImport("advapi32.dll", EntryPoint = "LogonUserExExW")] private static partial int {|HM0001:SignIn|}();
+            private static partial int SignIn() => 0;
+        }
+        """);
+
+    [Fact]
     public Task DllImport_LowercaseName_ReportsHM0001() => Verify("""
         using System.Runtime.InteropServices;
         static class N { [DllImport("advapi32.dll")] static extern bool {|HM0001:duplicatetokenex|}(); }
