@@ -214,6 +214,47 @@ The file is updated and committed at every task boundary.
   control.
 - **Cost if wrong:** a little more bookkeeping per task.
 
+### R22: Two gaps in the banned lists are closed in Task 7
+
+- **Decision:** Task 7 adds the following, each with tests:
+  - RS0030 entries for the managed library loader: every overload of `NativeLibrary.Load` and
+    `NativeLibrary.TryLoad`, plus `NativeLibrary.SetDllImportResolver`.
+  - `LogonUserExEx` on HM0001's token list. It's added only if the installed Windows SDK headers
+    declare `LogonUserExExW`.
+- **Why:**
+  - Spec §8.2 limits native calls to the short list in §7.3. Task 3's list bans `GetExport`, but not
+    the managed loader. With a DLL-import resolver, the loader can point a reviewed import at
+    another DLL.
+  - `LogonUserExExW` creates a logon token. The trailing-A/W rule doesn't reach it, because it maps
+    the name to `LogonUserExEx`, which isn't on the list.
+  - Task 7 hardens DLL loading, so the bans belong with it. No code before Task 7 needs either API.
+- **Cost if wrong:** a later task that really needs the managed loader has to add a reviewed
+  suppression.
+
+### R23: RS0030 doesn't flag a banned type that appears only in a signature
+
+- **Decision:** no extra HM rule is added for this in Phase 0.
+- **Why:**
+  - RS0030 reports every member access, construction and `typeof` of a banned type.
+  - A parameter, field or return type of type `RegistryKey` gets no diagnostic. But code can't get
+    or use a key without a member access that is flagged.
+  - Task 3's compile-only probe in a product project showed both behaviours.
+- **Cost if wrong:** a declaration that names `RegistryKey` can reach product code without an
+  error. Code review is the backstop, and an HM rule can close the gap later.
+
+### R24: A NuGet audit failure is fixed with a patch pin, never with a suppression
+
+- **Decision:** when a transitive package fails NuGet audit, pin it in `Directory.Packages.props`
+  under "Security pins". Use the newest patch of the current .NET major, with a comment naming the
+  advisories. Never suppress NU1901–NU1904.
+- **Why:**
+  - Warnings are errors, so an advisory blocks restore.
+  - A patch pin keeps the dependency graph on the major the rest of the build uses.
+  - Example: Task 3 pinned `System.Security.Cryptography.Pkcs` 10.0.15. It arrives through the
+    analyzer-testing packages and was raised past GHSA-2fmv-rv2c-59x7 and GHSA-846f-f764-76mx.
+- **Cost if wrong:** each pin needs a later look. Dependabot proposes the next major as its own pull
+  request.
+
 ## Task log
 
 ### Task 1: Solution skeleton, standards and dev setup (done)
@@ -264,3 +305,50 @@ The file is updated and committed at every task boundary.
   `windows` and `windows-arm64-tests`.
 - **Interruptions:** the first attempt was cut off by a usage limit after it made R20's edits. The
   controller checked those edits, and a second attempt committed them and finished the task.
+
+### Task 3: Banned-API enforcement, HM0001 and RS0030 (done)
+
+- **Commit:** `b1c53af` "feat(security): ban token-borrowing, injection and dynamic-import APIs
+  (HM0001, RS0030)".
+- **Plan:** Steps 1–8 ticked.
+- **CI:** [run 45921531376](https://github.com/cwgilgalad/HiveMind/actions/runs/45921531376).
+  All three jobs were green. `linux-tests` ran all three test projects: 20 tests (2 Core, 10
+  analyzer, 8 policy).
+- **Packages:**
+  - The Roslyn family is pinned at 5.0.0 (R13). The built analyzer references only
+    `Microsoft.CodeAnalysis` 5.0.0.0. No build produced CS8032, CS9057 or AD0001.
+  - `Microsoft.CodeAnalysis.BannedApiAnalyzers` is 5.6.0. Its analyzer DLLs reference Roslyn
+    4.12.0.0, so they load on the floor SDK.
+  - `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing` is 1.1.4.
+  - `System.Security.Cryptography.Pkcs` is pinned at 10.0.15 (R24).
+  - `Microsoft.CodeAnalysis.Analyzers` 3.11.0 comes in transitively and isn't pinned. Release
+    tracking (RS2008) uses `AnalyzerReleases.Shipped.md` and `AnalyzerReleases.Unshipped.md`.
+- **Roslyn stays out of the product:**
+  - `src/HiveMind.Core/packages.lock.json` holds only the BannedApiAnalyzers entry.
+  - The Core build output has no `Microsoft.CodeAnalysis*.dll` and no `HiveMind.Analyzers.dll`.
+- **Analyzers proven live:** a compile-only probe file in `HiveMind.Core` produced `error HM0001`
+  and `error RS0030`. It was never executed and never committed.
+- **Deviations from the plan, accepted at inspection:**
+  - The analyzer also checks local functions, through an operation action plus a tenth test. C#
+    accepts a `static extern` local function with `DllImport`, and symbol actions never see local
+    functions.
+  - Imports by ordinal get their own reason text.
+  - The test files add `using` directives and file-scoped namespaces around the plan's class bodies,
+    because the style rules require them.
+  - The pull request template opens with a short "What this changes" section, above the plan's eight
+    checklist items.
+  - In the red step, the HM0001 release-tracking row was held back so that the first failure was
+    the intended CS0246. It was restored before green.
+  - The probe ran twice. The first run had a `RegistryKey` parameter only and produced HM0001
+    alone (R23). The second run read a member, never executed, and produced both diagnostics.
+    Neither file was ever staged.
+- **Noted for later tasks:**
+  - Task 7: the banned-list additions in R22.
+  - Task 12: five packages declare a license URL instead of an SPDX expression, and the linked texts
+    are all MIT. The license gate has to classify them:
+    - `NETStandard.Library` 2.0.3 and `Microsoft.NETCore.Platforms` 1.1.0 are implicit SDK packages
+      in the analyzer build. They're build-time only.
+    - `Microsoft.VisualStudio.Validation` 15.0.82, `System.ComponentModel.Composition` 4.5.0 and
+      `System.Security.Permissions` 4.5.0 are test-only.
+  - The analyzer tests download `Microsoft.NETCore.App.Ref` 8.0 from nuget.org at test time. This
+    worked locally and on all three CI jobs.
