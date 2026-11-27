@@ -358,6 +358,67 @@ The file is updated and committed at every task boundary.
   the plan's test list. Task 6 works in the same area and consumes both types.
 - **Cost if wrong:** Task 6's run has one extra small commit.
 
+### R33: The journal's open questions, as ruled in Task 6's dispatch
+
+- **Decision:** Task 6 implements the plan's segment format with these rulings for the points the
+  plan leaves open:
+  - `Verify` checks each record in this order and stops at the first problem: structure, then
+    sequence, then the previous-hash link, then the record's own hash. Running past the end of the
+    file is `TruncatedTail`. Lengths that don't add up, or that exceed a limit, are `HashMismatch`,
+    because no writer produced those bytes. A header that is short, has the wrong magic or has an
+    unknown version is `BadHeader`. A segment with only a header is intact.
+  - Every length field is checked against its limit and against the bytes left in the file before
+    anything is allocated.
+  - `Create` uses `CreateNew` and never overwrites a segment. This follows the same reasoning as R25.
+  - `OpenForAppend` opens its write handle first, so no second writer can get in, and only then
+    verifies the segment. It refuses to append to a damaged segment and leaves the file as it is.
+  - `Append` runs under a private lock (R31), writes each record in one call and flushes it to disk.
+  - `ReadRecords` stops quietly at the first record whose structure is broken. Checking hashes and
+    the chain is `Verify`'s job.
+  - The body's JSON goes through a source-generated context only, with no reflection-based
+    serializer.
+- **Why:** a crash in the middle of an append has to be caught and has to stop further writes
+  (plan Review Focus 2), and a crafted file must not be able to cause a huge allocation. With this
+  check order, each of the plan's tampering tests reports the most specific problem.
+- **Cost if wrong:** a later format version would need a migration. Phase 0 has no segments in
+  the field yet.
+
+### R34: The single-writer rule is enforced only on Windows
+
+- **Decision:** accepted. On Linux, .NET emulates `FileShare` with advisory locks, so a second
+  writer isn't blocked there.
+- **Why:** HiveMind ships only for Windows. Linux runs the Core tests in CI, and no test depends on
+  the lock.
+- **Cost if wrong:** none for users. Any future cross-platform tool would need its own lock file.
+
+### R35: Unknown flag bits fail authentication
+
+- **Decision:** accepted as it is. `JournalRecord` keeps only the elevated bit. A record with other
+  flag bits set passes `Verify`, because its hash covers the real bytes, but `DecryptBody` fails to
+  authenticate it, because the associated data is rebuilt from the elevated bit alone.
+- **Why:** HiveMind never writes other bits, so only tampered or foreign files have them, and
+  failing closed is the right result for those. If a later format version defines a new bit, it
+  will carry the raw flags byte through.
+- **Cost if wrong:** a foreign or tampered record's body can't be read. Its header fields still can.
+
+### R36: The faulted-writer path has no unit test in Phase 0
+
+- **Decision:** accepted. If a write or flush throws, the writer marks itself faulted, and every
+  later `Append` throws `InvalidOperationException` until the segment is reopened with
+  `OpenForAppend`, which verifies it first. This isn't unit-tested.
+- **Why:** testing it needs IO fault injection, and Phase 0 has no seam for that. The code path is
+  four lines, and the inline check confirmed it.
+- **Cost if wrong:** a live session could append after a torn write. The next `OpenForAppend` or
+  `Verify` would still catch the damage. The final whole-branch review looks at this again.
+
+### R37: The first package added in Phase 0
+
+- **Decision:** `Microsoft.Extensions.TimeProvider.Testing` 10.11.1 is added, MIT-licensed,
+  referenced only by `HiveMind.Core.Tests`. It brings no transitive packages, so the only lock-file
+  change is one direct entry.
+- **Why:** the plan names it, so tests can use a fake clock. It is test-only and never ships.
+- **Cost if wrong:** none at runtime. Task 12's license gate will classify it along with the rest.
+
 ## Task log
 
 ### Task 1: Solution skeleton, standards and dev setup (done)
@@ -544,3 +605,56 @@ The file is updated and committed at every task boundary.
   - Commit 1 makes no change to `MasterKeyStore.cs`, so no `File.Exists` was added to the load path.
   - Both commits use the repo's noreply identity.
   - The privacy grep is clean.
+
+### Task 6: Audit journal (done)
+
+- **Commits:**
+  - `f78b1ec` "test(crypto): cover the store-key length and use-after-dispose guards", which
+    applies R32
+  - `1740b9e` "feat(audit): hash-chained, encrypted journal segment format"
+- **Plan:** Task 6 Steps 1–5 ticked. The R32 commit ticks nothing, as intended.
+- **CI:** [run 46061111974](https://github.com/cwgilgalad/HiveMind/actions/runs/46061111974).
+  All three jobs were green, with 106 tests each: 88 Core, 10 analyzer and 8 policy. Both commits
+  were pushed together, so CI ran once, on the second.
+- **Packages:** R37.
+- **Test-first evidence:**
+  - The journal tests first failed to compile because the types didn't exist yet, as the plan
+    expects. Then all 21 passed.
+  - Mutation checks, all reverted: forcing the verifier's hash comparison to succeed made the
+    flipped-body test fail; removing the stream cipher's store-key check made all three key-length
+    cases fail.
+  - `UseAfterDispose_Throws` still passes with `RecordCipher`'s own guard removed, because the
+    disposed `AesGcm` throws `ObjectDisposedException` by itself. The guard stays as a clear,
+    documented first check.
+- **Format:** byte offsets were checked against a real file with a throwaway probe test that
+  wasn't committed. Header: magic 0, version 4, segment id 6, previous-segment hash 22, created
+  time 54, 62 bytes in all. Record, from its start: length 0, sequence 4, ticks 12, action 20,
+  flags 22, SID length 23, SID 25, previous hash 25+n, body length 57+n, body 61+n, hash 61+n+m.
+- **Deviations from the plan, accepted at inspection:**
+  - The test key is a static get-only property instead of a static readonly field, because the
+    repo's naming rule (an error) requires `_camelCase` for private fields. The brief's test code
+    is otherwise unchanged.
+  - `Header_ActionSidAndTimeReadableWithoutKey` also checks `ReadHeader`, which no other test covers.
+  - The feature commit also stages the test project, its lock file and the plan's ticked
+    checkboxes, which the plan's `git add` line leaves out.
+  - Three extra verifier tests, within the dispatch's limit: unknown version, header-only segment,
+    and an inconsistent record length.
+  - Ticks outside the range a `DateTimeOffset` can hold count as malformed (`HashMismatch` for a
+    record, `BadHeader` for the header), so a crafted file can't make the reader throw
+    `ArgumentOutOfRangeException`.
+  - The actor SID is encoded as strict UTF-8, so an unpaired surrogate throws (an
+    `ArgumentException`) instead of being replaced. This keeps the SID round-tripping byte for byte
+    into the associated data.
+  - Records returned by `Append` carry their own copies of the hash arrays, so a caller can't
+    corrupt the writer's chain.
+  - `LastGoodHash` is an empty array when the header is bad, and its XML doc says so.
+- **Concerns raised by the agent, ruled on:** R34 (Linux file sharing is advisory), R35 (unknown
+  flag bits) and R36 (the faulted-writer path is untested).
+- **Checked inline:**
+  - The parser checks the length field, then the SID length, then the body length, each against
+    its limit and the bytes left in the file, and allocates only once the record length equals the
+    sum of checked fields.
+  - `OpenForAppend` opens its handle before calling `Verify`, `Create` uses `CreateNew`, and
+    `Append` validates everything before taking the lock and zeroes the JSON in `finally`.
+  - Readers open with `FileShare.ReadWrite`.
+  - Both commits use the repo's noreply identity, and the privacy grep is clean.
