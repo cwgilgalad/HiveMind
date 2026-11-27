@@ -855,7 +855,7 @@ public static class JournalVerifier { public static JournalVerification Verify(s
 - **`OpenForAppend`** runs `Verify` first. On any problem it throws `JournalCorruptException` with
   `LastGoodSequence = RecordCount`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```csharp
 public sealed class JournalWriterReaderTests
@@ -928,19 +928,19 @@ Also write these tests:
   - `OpenForAppend_TruncatedTail_Throws`: expect `JournalCorruptException` with
     `Problem == TruncatedTail` and `LastGoodSequence == 2`
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test tests/HiveMind.Core.Tests --filter "FullyQualifiedName~Journal"`
 Expected: compile errors.
 
-- [ ] **Step 3: Implement the journal types** per the format above
+- [x] **Step 3: Implement the journal types** per the format above
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test tests/HiveMind.Core.Tests --filter "FullyQualifiedName~Journal"`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HiveMind.Core/Journal tests/HiveMind.Core.Tests/Journal Directory.Packages.props
