@@ -63,8 +63,13 @@ or without the GitHub CLI:
 git clone https://github.com/cwgilgalad/HiveMind.git
 ```
 
-Development prerequisites, and a setup script that checks them, arrive in Phase 0. Expect
-Windows 11, Git, the .NET 10 SDK, and Visual Studio with the WinUI application development workload.
+To set up a machine, build and test, see [docs/development.md](docs/development.md).
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) first: it covers DCO sign-off, code standards and the
+banned-API rules. Report security issues privately as [SECURITY.md](SECURITY.md) describes, never in
+a public issue.
 
 ## License
 
@@ -76,3 +81,5 @@ CC BY 4.0.
 Release binaries will be signed through SignPath Foundation's free program for open-source
 projects. Signed releases will carry this line: *Free code signing provided by SignPath.io,
 certificate by SignPath Foundation.* No binaries are published yet.
+See the [code signing policy](CODE_SIGNING_POLICY.md) for roles, what gets signed and how to
+verify a file.

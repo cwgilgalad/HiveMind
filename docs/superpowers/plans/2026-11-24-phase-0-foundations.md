@@ -1874,7 +1874,7 @@ DCO job in `ci.yml`:
 - runs only when `github.event.pull_request.head.repo.fork == true`, with `fetch-depth: 0`
 - fails if any commit in `base..head` lacks a line starting with `Signed-off-by: `
 
-- [ ] **Step 1: Write the failing policy tests**
+- [x] **Step 1: Write the failing policy tests**
 
 ```csharp
 public sealed class GovernancePolicyTests
@@ -1891,19 +1891,19 @@ public sealed class GovernancePolicyTests
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test tests/HiveMind.Policy.Tests --filter "FullyQualifiedName~Governance"`
 Expected: the files are missing, or the links aren't there.
 
-- [ ] **Step 3: Write the documents, update `README.md`, and add the DCO job**
+- [x] **Step 3: Write the documents, update `README.md`, and add the DCO job**
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test tests/HiveMind.Policy.Tests --filter "FullyQualifiedName~Governance"`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add CONTRIBUTING.md SECURITY.md CODE_SIGNING_POLICY.md README.md tests/HiveMind.Policy.Tests .github

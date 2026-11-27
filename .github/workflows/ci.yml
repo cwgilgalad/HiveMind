@@ -79,3 +79,39 @@ jobs:
         run: dotnet build HiveMind.slnx -c Release --no-restore
       - name: Test
         run: dotnet test HiveMind.slnx -c Release --no-build --logger trx --results-directory artifacts/test-results
+
+  dco:
+    # Developer Certificate of Origin check for pull requests from forks (CONTRIBUTING.md).
+    # The job reads untrusted fork commits, so it runs on pull_request (never pull_request_target),
+    # has read-only permissions and no secrets, and passes PR data to the shell only through env.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check Signed-off-by lines
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Merge commits are skipped: GitHub creates them when a contributor syncs a fork, and
+          # they carry no new authored change.
+          commits=$(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA")
+          missing=0
+          for sha in $commits; do
+            message=$(git log -1 --format=%B "$sha")
+            if ! grep -q '^Signed-off-by: ' <<< "$message"; then
+              echo "::error::Commit $(git rev-parse --short "$sha") has no 'Signed-off-by: ' line."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Sign off each commit with 'git commit -s'. See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "Every commit is signed off."
