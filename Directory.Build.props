@@ -39,4 +39,15 @@
     <IsProductProject Condition="$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)').StartsWith('$(_HiveMindSrcDirectory)', StringComparison.OrdinalIgnoreCase))">true</IsProductProject>
   </PropertyGroup>
 
+  <!--
+    Banned APIs (spec section 8.2): HM0001 flags banned native imports, and RS0030 flags the managed
+    symbols in eng/BannedSymbols.txt. Both are errors in every product project. PrivateAssets keeps
+    the analyzers out of the projects that reference a product project, so tests may still use them.
+  -->
+  <ItemGroup Label="Banned APIs" Condition="'$(IsProductProject)' == 'true' and '$(MSBuildProjectName)' != 'HiveMind.Analyzers'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)src/HiveMind.Analyzers/HiveMind.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)eng/BannedSymbols.txt" />
+  </ItemGroup>
+
 </Project>

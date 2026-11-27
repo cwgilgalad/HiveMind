@@ -360,7 +360,7 @@ M:System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer(System.In
 M:System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer``1(System.IntPtr);Dynamic export lookup hides imports (spec 8.2)
 ```
 
-- [ ] **Step 1: Write the failing analyzer tests** in `tests/HiveMind.Analyzers.Tests/BannedNativeApiAnalyzerTests.cs`
+- [x] **Step 1: Write the failing analyzer tests** in `tests/HiveMind.Analyzers.Tests/BannedNativeApiAnalyzerTests.cs`
 
 Use `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing`
 (`CSharpAnalyzerTest<BannedNativeApiAnalyzer, DefaultVerifier>`) with
@@ -435,7 +435,7 @@ public sealed class BannedNativeApiAnalyzerTests
 }
 ```
 
-- [ ] **Step 2: Write the failing policy test** in `tests/HiveMind.Policy.Tests/BannedSymbolsPolicyTests.cs` (`HiveMind.Policy.Tests` targets `net10.0` and references `HiveMind.Testing`)
+- [x] **Step 2: Write the failing policy test** in `tests/HiveMind.Policy.Tests/BannedSymbolsPolicyTests.cs` (`HiveMind.Policy.Tests` targets `net10.0` and references `HiveMind.Testing`)
 
 ```csharp
 public sealed class BannedSymbolsPolicyTests
@@ -457,12 +457,12 @@ public sealed class BannedSymbolsPolicyTests
 }
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `dotnet test tests/HiveMind.Analyzers.Tests && dotnet test tests/HiveMind.Policy.Tests`
 Expected: compile errors (no analyzer type yet), then policy failures (the file is missing).
 
-- [ ] **Step 4: Implement the analyzer**
+- [x] **Step 4: Implement the analyzer**
 
 Implement `BannedNativeApis` and `BannedNativeApiAnalyzer`. The analyzer project targets
 `netstandard2.0` with `IsRoslynComponent=true` and `EnforceExtendedAnalyzerRules=true`. Pin
@@ -470,7 +470,7 @@ Implement `BannedNativeApis` and `BannedNativeApiAnalyzer`. The analyzer project
 the pinned .NET 10 SDK. Register `SymbolKind.Method`, read the method's attributes, and resolve the
 entry point.
 
-- [ ] **Step 5: Write `eng/BannedSymbols.txt` and wire both analyzers into product projects**
+- [x] **Step 5: Write `eng/BannedSymbols.txt` and wire both analyzers into product projects**
 
 In `Directory.Build.props`, when `IsProductProject` is true and the project isn't
 `HiveMind.Analyzers`, add:
@@ -478,12 +478,12 @@ In `Directory.Build.props`, when `IsProductProject` is true and the project isn'
 - a `PackageReference` to `Microsoft.CodeAnalysis.BannedApiAnalyzers`
 - `<AdditionalFiles Include="$(MSBuildThisFileDirectory)eng/BannedSymbols.txt" />`
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `dotnet test tests/HiveMind.Analyzers.Tests && dotnet test tests/HiveMind.Policy.Tests`
 Expected: all pass.
 
-- [ ] **Step 7: Write `.github/pull_request_template.md`**
+- [x] **Step 7: Write `.github/pull_request_template.md`**
 
 A checklist with these items:
 - No new native imports, or each new import is listed in CsWin32's `NativeMethods.txt` and reviewed
@@ -500,7 +500,7 @@ A checklist with these items:
 - Tests cover the change, and Windows-only tests skip elsewhere.
 - External contributors only: every commit carries `Signed-off-by:` (DCO).
 
-- [ ] **Step 8: Add the new test projects to CI and commit**
+- [x] **Step 8: Add the new test projects to CI and commit**
 
 Add `tests/HiveMind.Analyzers.Tests` and `tests/HiveMind.Policy.Tests` to the `linux-tests` job.
 

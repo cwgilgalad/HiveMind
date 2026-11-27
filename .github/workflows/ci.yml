@@ -30,7 +30,10 @@ jobs:
         with:
           global-json-file: global.json
       - name: Test
-        run: dotnet test tests/HiveMind.Core.Tests -c Release
+        run: |
+          dotnet test tests/HiveMind.Core.Tests -c Release
+          dotnet test tests/HiveMind.Analyzers.Tests -c Release
+          dotnet test tests/HiveMind.Policy.Tests -c Release
 
   windows:
     runs-on: windows-latest
