@@ -255,6 +255,78 @@ The file is updated and committed at every task boundary.
 - **Cost if wrong:** each pin needs a later look. Dependabot proposes the next major as its own pull
   request.
 
+### R25: A master key file that can't be read is never replaced
+
+- **Decision:**
+  - `MasterKeyStore.LoadOrCreate` treats the key file as missing only when opening it throws
+    `FileNotFoundException` or `DirectoryNotFoundException`. It never asks `File.Exists`.
+  - Every other open, read, format or unprotect failure throws `MasterKeyUnavailableException` and
+    leaves the file unchanged.
+  - Creating a key writes a uniquely named temp file in the same folder, flushes it to disk, and
+    moves it into place with `overwrite: false`. If a key file appeared in the meantime, the temp
+    file is deleted and that key is loaded through the normal path.
+  - Task 4 adds one test beyond the plan: a key file held open by another handle throws and stays
+    byte-identical.
+- **Why:** this is the plan's first Review Focus item. `File.Exists` returns false when access is
+  denied. With the plan's `File.Move(..., overwrite: true)`, the real key would then be replaced by a
+  new one, silently orphaning every encrypted store.
+- **Cost if wrong:**
+  - Two simultaneous first runs end up sharing one key, which is the intended outcome.
+  - Key rotation, in a later phase, needs to overwrite. The move sits in a helper that takes an
+    overwrite flag.
+
+### R26: PBKDF2 iteration counts are capped at 10,000,000
+
+- **Decision:**
+  - `PassphraseKeyWrap` gains `MaximumIterations = 10_000_000`.
+  - `Wrap` throws `ArgumentOutOfRangeException` above the cap.
+  - `Unwrap` throws `CryptographicException` before PBKDF2 runs.
+  - This lands in Task 5's run, as its own commit.
+- **Why:**
+  - The stored count is checked only after PBKDF2 has run with it.
+  - In a damaged or crafted backup, the count field can read near `int.MaxValue`; one flipped high
+    bit is enough. An import of that backup would stay busy for hours before failing.
+  - The cap is about 16 times the minimum, which leaves room to raise the work factor later.
+- **Cost if wrong:** a later version that needs more iterations raises the constant. Older builds
+  then refuse the newer backups, with a message saying why.
+
+### R27: An empty passphrase is refused
+
+- **Decision:**
+  - `PassphraseKeyWrap.Wrap`, and so `MasterKeyBackup.Export`, throws `ArgumentException` for an
+    empty passphrase.
+  - Rules on passphrase strength (length, guessability) belong to the recovery and export screens in
+    a later phase.
+  - This lands with R26.
+- **Why:** with an empty passphrase, anyone can open the backup. The spec says the backup is
+  "protected by a recovery passphrase". Refusing an empty one in Core costs one line.
+- **Cost if wrong:** none in practice. A caller that really wants an unprotected export would use a
+  different format.
+
+### R28: Task 4's error paths get committed tests in Task 5's run
+
+- **Decision:** the first commit of Task 5's run adds tests for:
+  - `Unwrap` and `Import` on input that is too short, has the wrong magic or version, or stores an
+    iteration count below the minimum or above R26's cap
+  - a tampered ciphertext
+  - R27's empty passphrase
+  - two first runs at once, using a protector that creates the key file from inside `Protect`
+- **Why:**
+  - Task 4 proved these paths only with a throwaway harness, because the controller had kept the
+    wrap tests to the plan's list.
+  - Most of these cases fail before PBKDF2 runs, so the tests take milliseconds.
+  - Task 5 works in the same folder, so the tests need no extra agent (R1).
+- **Cost if wrong:** Task 5's run has two commits instead of one.
+
+### R29: A temp file left behind by a failed cleanup is accepted
+
+- **Decision:** after an error, if deleting the temp file also fails, `masterkey.bin.<guid>.tmp`
+  stays behind. Phase 0 adds no sweep for it.
+- **Why:** the temp file holds only the protector's output, never the plaintext key, so it is exactly
+  as protected as the key file itself. The delete is best effort, so it never hides the original
+  error.
+- **Cost if wrong:** a stray file sits in the key folder until someone deletes it.
+
 ## Task log
 
 ### Task 1: Solution skeleton, standards and dev setup (done)
@@ -352,3 +424,45 @@ The file is updated and committed at every task boundary.
       `System.Security.Permissions` 4.5.0 are test-only.
   - The analyzer tests download `Microsoft.NETCore.App.Ref` 8.0 from nuget.org at test time. This
     worked locally and on all three CI jobs.
+
+### Task 4: Key hierarchy (done)
+
+- **Commit:** `cb01598` "feat(crypto): master key, store-key derivation and passphrase backup".
+- **Plan:** Steps 1–5 ticked.
+- **CI:** [run 45923422317](https://github.com/cwgilgalad/HiveMind/actions/runs/45923422317).
+  All three jobs were green, with 38 tests each:
+  - 20 Core: 18 new crypto tests and 2 build-info tests
+  - 10 analyzer
+  - 8 policy
+- **Packages:** none were added and no lock file changed. Every primitive is built into .NET:
+  AES-256-GCM with a 16-byte tag, HKDF-SHA256, PBKDF2-HMAC-SHA256 and `RandomNumberGenerator`.
+- **Analyzers:**
+  - HM0001, RS0030 and the CA53xx rules reported nothing on the new code, and nothing is suppressed.
+  - One CA2000 warning in the green step was fixed by restructuring the code.
+- **R25 applied:** the locked-file test also runs on Linux, with no skip. .NET's emulation of
+  `FileShare.None` blocks the open there too.
+- **Review Focus:**
+  - Item 1 (a key that can't be unwrapped) is covered by four tests: corrupt file, unprotect
+    failure, different protector, and locked file. Each one throws `MasterKeyUnavailableException`
+    and leaves the file byte-identical.
+  - Item 3 (awkward paths) is covered by two tests: Unicode with spaces, and a path longer than 300
+    characters. Both pass on all three runners.
+- **Deviations from the plan, accepted at inspection:**
+  - The create path moves with `overwrite: false` (R25).
+  - The six HKDF labels are written out as UTF-8 literals instead of being built from the enum
+    names. The bytes are the same. Renaming a `StoreKind` member can't change a key, and an
+    undefined store throws.
+  - A tag mismatch in `Unwrap` is rethrown as a plain `CryptographicException`, with the original
+    exception as the inner one. Every malformed-input case then throws the same type.
+  - A failure while saving a new key also throws `MasterKeyUnavailableException`, so callers catch
+    one type.
+  - A protector id must be 1–255 ASCII characters, because the format stores a one-byte length. It
+    is checked before any disk access.
+  - A key file over 64 KiB is reported as damaged without being read.
+  - `MasterKey` exposes its bytes only inside the assembly. Three buffers are zeroed after use: the
+    `Unprotect` output, the `Unwrap` output inside `Import`, and the PBKDF2 wrap key.
+- **Concerns raised by the agent, ruled on:** R26 (iteration cap), R27 (empty passphrase), R28
+  (error-path tests) and R29 (stray temp file).
+- **Checked inline:** `File.Exists` appears once, after a failed move. It decides only whether to
+  load a key that another process has just created. If it wrongly returns false, the error
+  propagates; no new key is written.
