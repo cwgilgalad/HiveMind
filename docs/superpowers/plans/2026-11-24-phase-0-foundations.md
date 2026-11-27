@@ -558,7 +558,7 @@ public static class MasterKeyBackup { public static byte[] Export(MasterKey mast
     tag doesn't verify
 - **`MasterKeyBackup`** = `PassphraseKeyWrap` over the 32 key bytes.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `FakeKeyProtector(string id = "fake", bool failUnprotect = false)` XORs bytes with `0x5A`. When
 `failUnprotect` is set, `Unprotect` throws `CryptographicException`. Tests compare keys through
@@ -664,19 +664,19 @@ public void DeriveStoreKey_EachStore_IsDistinct()
   - `Wrapped_StartsWithMagicAndVersion` (`HMPW`, `1`)
   - `MasterKeyBackup_ExportThenImport_RestoresSameKey`
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test tests/HiveMind.Core.Tests --filter "FullyQualifiedName~Crypto"`
 Expected: compile errors for the missing types.
 
-- [ ] **Step 3: Implement the eight types** in `src/HiveMind.Core/Crypto/`, per the values above
+- [x] **Step 3: Implement the eight types** in `src/HiveMind.Core/Crypto/`, per the values above
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test tests/HiveMind.Core.Tests --filter "FullyQualifiedName~Crypto"`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/HiveMind.Core/Crypto tests/HiveMind.Core.Tests/Crypto
